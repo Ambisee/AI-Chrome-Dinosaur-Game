@@ -1,0 +1,8 @@
+# python caches
+**/__pycache__
+
+# virtual environments
+**/virtualenv
+
+# output files
+*.pickle
