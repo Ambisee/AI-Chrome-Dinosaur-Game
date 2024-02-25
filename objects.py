@@ -94,8 +94,8 @@ class Cactus(object):
         self.width = self.sprite.get_width()
 
 
-    def move(self):
-        self.x -= 20
+    def move(self, speed=10):
+        self.x -= speed
 
     
     def draw(self, win):

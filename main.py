@@ -52,7 +52,7 @@ def evaluate_genomes(genomes, config):
     clock = pygame.time.Clock()
 
     MOVE_EVENT = pygame.USEREVENT + 1
-    frames_per_update = 1.25
+    frames_per_update = 1
     move_interval = int(1000 / (FPS * 1 / frames_per_update))
 
     pygame.time.set_timer(MOVE_EVENT, move_interval)
@@ -83,38 +83,40 @@ def evaluate_genomes(genomes, config):
             run = False
             break
 
-        timer = pygame.time.get_ticks()
+        # timer = pygame.time.get_ticks()
         for index, dino in enumerate(dinosaurs):
             dino.move()
-            ge[index].fitness += 0.1
 
             output = nets[index].activate((dino.x + dino.width, cacti[current_cactus_index].x))
             if output[0] > 0.5:
                 dino.jump()
                 ge[index].fitness -= 1
             else:
-                ge[index].fitness += 3
+                ge[index].fitness += 2
 
         for i, cactus in enumerate(cacti):
             cactus.move()
     
             if cactus.x + cactus.width < 0:
-                cactus.x = WIDTH + cacti[last_cactus_index].x + random.randrange(0, 250)
+                cacti[i] = Cactus(
+                    WIDTH // random.randrange(1, 3) + cacti[last_cactus_index].x + random.randrange(0, 250),
+                    350
+                )
                 last_cactus_index = i
                 continue
             
-        for index, dino in enumerate(dinosaurs):
-            if cacti[current_cactus_index].check_collision(dino):
-                ge[index].fitness -= 5
-                dinosaurs.pop(index)
-                nets.pop(index)
-                ge.pop(index)
+        for i in range(len(dinosaurs) - 1, -1, -1):
+            if cacti[current_cactus_index].check_collision(dinosaurs[i]):
+                ge[i].fitness -= 5
+                dinosaurs.pop(i)
+                nets.pop(i)
+                ge.pop(i)
                 
-        if len(dinosaurs) > 0 and cacti[current_cactus_index].x < dinosaurs[0].x + dinosaurs[0].width:
+        if len(dinosaurs) > 0 and cacti[current_cactus_index].x < dinosaurs[0].x:
             score += 1
             current_cactus_index = (current_cactus_index + 1) % len(cacti)
             for genome in ge:
-                genome.fitness += 5
+                genome.fitness += 2
 
         if score >= TERMINATION_SCORE:
             run = False
@@ -123,8 +125,10 @@ def evaluate_genomes(genomes, config):
         screen.fill(pygame.Color(255, 255, 255))
 
         ground.draw(screen)
+
+        timer = pygame.time.get_ticks()
         for dino in dinosaurs:
-            dino.draw(screen, lambda: (timer % 1 == 0))
+            dino.draw(screen, lambda: timer % 5 == 0)
         for cactus in cacti:
             cactus.draw(screen)
         
@@ -183,7 +187,7 @@ def play(model=None):
 
     # Fires an event signaling a frame to move all game objects
     MOVE_EVENT = pygame.USEREVENT + 1
-    frames_per_update = 1.25
+    frames_per_update = 1
     move_interval = int(1000 / (FPS * 1 / frames_per_update))
 
     pygame.time.set_timer(MOVE_EVENT, move_interval)
@@ -199,14 +203,14 @@ def play(model=None):
             if event.type == pygame.QUIT:
                 run = False
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and model is None:
-                dinosaur.jump()
-
             if event.type == MOVE_EVENT:
                 move = True
         
         if not move:
             continue
+
+        if pygame.key.get_pressed()[pygame.K_SPACE] and model is None:
+            dinosaur.jump()
 
         fps_display = font.render(f'FPS : {int(clock.get_fps())}', False, (0, 0, 0))
         score_display = font.render(f'Score : {score}', False, (0, 0, 0))
@@ -216,24 +220,28 @@ def play(model=None):
             cactus.move()
     
             if cactus.x + cactus.width < 0:
-                cactus.x = WIDTH // 2 + cacti[last_cactus_index].x + random.randrange(0, WIDTH)
+                cacti[i] = Cactus(
+                    WIDTH // random.randrange(1, 3) + cacti[last_cactus_index].x + random.randrange(0, 250),
+                    350
+                )
                 last_cactus_index = i
                 continue
         
         if cacti[current_cactus_index].check_collision(dinosaur):
-            run = False
+            return
 
-        if model.activate((dinosaur.x + dinosaur.width, cacti[current_cactus_index].x))[0] > 0.5:
+        if model is not None and model.activate((dinosaur.x + dinosaur.width, cacti[current_cactus_index].x))[0] > 0.5:
             dinosaur.jump()
 
-        if cacti[current_cactus_index].x < dinosaur.x + dinosaur.width:
+        if cacti[current_cactus_index].x < dinosaur.x:
             score += 1
             current_cactus_index = (current_cactus_index + 1) % len(cacti)
         screen.fill(pygame.Color(255, 255, 255))
 
         ground.draw(screen)
 
-        dinosaur.draw(screen, lambda: True)
+        timer = pygame.time.get_ticks()
+        dinosaur.draw(screen, lambda: timer % 5 == 0)
         for cactus in cacti:
             if cactus.x < WIDTH:
                 cactus.draw(screen)
