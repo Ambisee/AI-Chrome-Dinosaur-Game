@@ -6,24 +6,30 @@ from config import WIDTH, HEIGHT, GROUND_HEIGHT
 pygame.display.set_mode((WIDTH, HEIGHT))
 
 current_dir: str = os.path.dirname(__name__)
-trex_animation_frames: list[pygame.Surface] = []
+trex_sprites: list[pygame.Surface] = []
 cactus_sprites: list[pygame.Surface] = []
+trex_masks: list[pygame.Mask] = []
+cactus_masks: list[pygame.Mask] = []
 
 # Load the game assets into pygame surfaces
-trexJump = pygame.image.load(os.path.join(current_dir, 'resources/trex1.png')).convert()
-trex1 = pygame.image.load(os.path.join(current_dir, 'resources/trex3.png')).convert()
-trex2 = pygame.image.load(os.path.join(current_dir, 'resources/trex4.png')).convert()
-cactus1 = pygame.image.load(os.path.join(current_dir, 'resources/cactus1.png')).convert()
-cactus2 = pygame.image.load(os.path.join(current_dir, 'resources/cactus2.png')).convert()
-cactus3 = pygame.image.load(os.path.join(current_dir, 'resources/cactus3.png')).convert()
+trexJump = pygame.image.load(os.path.join(current_dir, 'resources/trex1.png')).convert_alpha()
+trex1 = pygame.image.load(os.path.join(current_dir, 'resources/trex3.png')).convert_alpha()
+trex2 = pygame.image.load(os.path.join(current_dir, 'resources/trex4.png')).convert_alpha()
+cactus1 = pygame.image.load(os.path.join(current_dir, 'resources/cactus1.png')).convert_alpha()
+cactus2 = pygame.image.load(os.path.join(current_dir, 'resources/cactus2.png')).convert_alpha()
+cactus3 = pygame.image.load(os.path.join(current_dir, 'resources/cactus3.png')).convert_alpha()
 
 # Add them into their corresponding lists
-trex_animation_frames.append(pygame.transform.scale(trex1, (50, 50)))
-trex_animation_frames.append(pygame.transform.scale(trex2, (50, 50)))
-trex_animation_frames.append(pygame.transform.scale(trexJump, (50, 50)))
+trex_sprites.append(pygame.transform.scale(trex1, (50, 50)))
+trex_sprites.append(pygame.transform.scale(trex2, (50, 50)))
+trex_sprites.append(pygame.transform.scale(trexJump, (50, 50)))
 cactus_sprites.append(pygame.transform.scale(cactus1, (40, 84)))
 cactus_sprites.append(pygame.transform.scale(cactus2, (56, 60)))
 cactus_sprites.append(pygame.transform.scale(cactus3, (69, 70)))
+
+# Create masks for each sprites
+trex_masks = [pygame.mask.from_surface(trex_sprites[i]) for i in range(len(trex_sprites))]
+cactus_masks = [pygame.mask.from_surface(cactus_sprites[i]) for i in range(len(cactus_sprites))]
 
 
 class Dinosaur(object):
@@ -35,8 +41,8 @@ class Dinosaur(object):
         self.jump_count = 9
         self.animation_switch = False
         self.timer = 0
-        self.sprites = trex_animation_frames
-        self.masks = [pygame.mask.from_surface(sprite) for sprite in self.sprites]
+        self.sprites = trex_sprites
+        self.masks = trex_masks
         self.current_sprite_index = 0
 
         self.width = self.sprites[self.current_sprite_index].get_width()
@@ -79,10 +85,12 @@ class Dinosaur(object):
 
 class Cactus(object):
     def __init__(self, x, y, sprite=0, next_cactus=None):
-        self.sprite = random.choice(cactus_sprites)
-        self.mask = pygame.mask.from_surface(self.sprite)
+        cactus_index = random.randrange(0, len(cactus_sprites))
+
+        self.sprite = cactus_sprites[cactus_index]
+        self.mask = cactus_masks[cactus_index]
         self.x = x
-        self.y = y - self.sprite.get_height()
+        self.y = y - self.sprite.get_height()  # the top coordinate of the ground
         self.width = self.sprite.get_width()
 
 
@@ -103,9 +111,7 @@ class Cactus(object):
 
         overlapping = cactus_mask.overlap(dino_mask, (offset_x, offset_y))
 
-        if overlapping is not None:
-            return True
-        return False
+        return overlapping is not None
         
 
 class Ground(object):
