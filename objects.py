@@ -1,22 +1,23 @@
 import os
-import sys
 import pygame
 import random
 from config import WIDTH, HEIGHT, GROUND_HEIGHT
 
-pygame.init()
+pygame.display.set_mode((WIDTH, HEIGHT))
 
-current_dir = os.path.dirname(__name__)
-trex_animation_frames = []
-cactus_sprites = []
+current_dir: str = os.path.dirname(__name__)
+trex_animation_frames: list[pygame.Surface] = []
+cactus_sprites: list[pygame.Surface] = []
 
-trexJump = pygame.image.load(os.path.join(current_dir, 'resources/trex1.png'))
-trex1 = pygame.image.load(os.path.join(current_dir, 'resources/trex3.png'))
-trex2 = pygame.image.load(os.path.join(current_dir, 'resources/trex4.png'))
-cactus1 = pygame.image.load(os.path.join(current_dir, 'resources/cactus1.png'))
-cactus2 = pygame.image.load(os.path.join(current_dir, 'resources/cactus2.png'))
-cactus3 = pygame.image.load(os.path.join(current_dir, 'resources/cactus3.png'))
+# Load the game assets into pygame surfaces
+trexJump = pygame.image.load(os.path.join(current_dir, 'resources/trex1.png')).convert()
+trex1 = pygame.image.load(os.path.join(current_dir, 'resources/trex3.png')).convert()
+trex2 = pygame.image.load(os.path.join(current_dir, 'resources/trex4.png')).convert()
+cactus1 = pygame.image.load(os.path.join(current_dir, 'resources/cactus1.png')).convert()
+cactus2 = pygame.image.load(os.path.join(current_dir, 'resources/cactus2.png')).convert()
+cactus3 = pygame.image.load(os.path.join(current_dir, 'resources/cactus3.png')).convert()
 
+# Add them into their corresponding lists
 trex_animation_frames.append(pygame.transform.scale(trex1, (50, 50)))
 trex_animation_frames.append(pygame.transform.scale(trex2, (50, 50)))
 trex_animation_frames.append(pygame.transform.scale(trexJump, (50, 50)))
@@ -35,9 +36,10 @@ class Dinosaur(object):
         self.animation_switch = False
         self.timer = 0
         self.sprites = trex_animation_frames
-        self.current_sprite = self.sprites[0]
+        self.masks = [pygame.mask.from_surface(sprite) for sprite in self.sprites]
+        self.current_sprite_index = 0
 
-        self.width = self.current_sprite.get_width()
+        self.width = self.sprites[self.current_sprite_index].get_width()
 
     
     def jump(self):
@@ -51,6 +53,7 @@ class Dinosaur(object):
             neg = 1
             if self.jump_count < 0:
                 neg = -1
+
             self.y -= (self.jump_count ** 2) * neg * 0.5
             self.jump_count -= 1
         else:
@@ -61,26 +64,26 @@ class Dinosaur(object):
 
 
     def get_mask(self):
-        return pygame.mask.from_surface(self.current_sprite)
+        return self.masks[self.current_sprite_index]
 
     
     def draw(self, win, proceed_render_function):
-        self.current_sprite = self.sprites[2]
+        self.current_sprite_index = 2
         if not self.is_jump:
             if proceed_render_function():
-                self.animation_switch = int(self.animation_switch ^ (self.timer % 5 == 0))
-            self.current_sprite = self.sprites[self.animation_switch]
+                self.animation_switch = int(self.animation_switch ^ (self.timer % 2 == 0))
+            self.current_sprite_index = self.animation_switch
 
-        win.blit(self.current_sprite, (self.x, self.y))
+        win.blit(self.sprites[self.current_sprite_index], (self.x, self.y))
 
 
 class Cactus(object):
-    def __init__(self, x, y, sprite=0):
+    def __init__(self, x, y, sprite=0, next_cactus=None):
         self.sprite = random.choice(cactus_sprites)
+        self.mask = pygame.mask.from_surface(self.sprite)
         self.x = x
-        self.y = y - self.sprite.get_height() + 7
+        self.y = y - self.sprite.get_height()
         self.width = self.sprite.get_width()
-        self.passed = False
 
 
     def move(self):
@@ -92,21 +95,18 @@ class Cactus(object):
     
 
     def check_collision(self, dino):
-        dino_mask = dino.get_mask()
-        cactus_mask = pygame.mask.from_surface(self.sprite)
+        dino_mask: pygame.Mask = dino.get_mask()
+        cactus_mask = self.mask
 
-        offset_x = self.x - round(dino.x)
-        offset_y = self.y - round(dino.y)
+        offset_x = self.x - dino.x
+        offset_y = self.y - dino.y
+
         overlapping = cactus_mask.overlap(dino_mask, (offset_x, offset_y))
 
-        if overlapping is not None: return True
+        if overlapping is not None:
+            return True
         return False
-
-    def set_passed(self):
-        self.passed = True
-
-    def is_passed(self):
-        return self.passed
+        
 
 class Ground(object):
     def __init__(self, x=0, y=GROUND_HEIGHT):
